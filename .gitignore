@@ -23,3 +23,6 @@
 
 # Flex generated
 *.yy.c
+
+# Unneccesary
+command.txt

@@ -1,6 +1,6 @@
 %{
-    #include "mfcalc.h"
-    #include "mfcalc.tab.h"
+    #include "parser.h"
+    #include "parser.tab.h"
     #include <stdio.h>
 %}
 

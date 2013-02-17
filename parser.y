@@ -4,7 +4,7 @@
     #include <string.h>
     #include <stdlib.h>
     #include <ctype.h>
-    #include "mfcalc.h"
+    #include "parser.h"
     #define YYDEBUG 1
     #define YYPRINT(file, type, value) yyprint(file, type, value)
     int yylex(void);
@@ -89,16 +89,15 @@ void init_table (void) {
     }
 }
 
-int main(int argc, char const* argv[]) {
+/*int main(int argc, char const* argv[]) {
     int i;
-    /* Enable parse traces on option -p */
     for (i=1; i < argc; ++i)
         if(!strcmp(argv[i], "-p"))
             yydebug = 1;
     init_table ();
     //printf("%i\n", yyparse());
     return yyparse ();
-}
+}*/
 
 symrec * putsym (char const *sym_name, int sym_type) {
     symrec *ptr = (symrec*) malloc (sizeof (symrec));
