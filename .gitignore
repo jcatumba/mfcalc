@@ -1,0 +1,25 @@
+# Object files
+*.o
+
+# Libraries
+*.lib
+*.a
+
+# Shared objects (inc. windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.bin
+
+# Bison generated
+*.tab.c
+*.tab.h
+
+# Flex generated
+*.yy.c
