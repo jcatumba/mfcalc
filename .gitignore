@@ -5,7 +5,7 @@
 *.lib
 *.a
 
-# Shared objects (inc. windows DLLs)
+# Shared objects (inc. Windows DLLs)
 *.dll
 *.so
 *.so.*
