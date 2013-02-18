@@ -5,7 +5,6 @@
 #include <stdlib.h>
 
 extern FILE *yyin;
-extern FILE *yyout;
 extern int yyparse(void);
 
 int main (int argc, char const *argv[]){
@@ -21,7 +20,6 @@ int main (int argc, char const *argv[]){
         fseek (yyin, 0, SEEK_SET); /* Put pointer at beginig of the file */
         yyparse ();
         remove ("command");
-        //fclose (fp);
     }
 
 }
