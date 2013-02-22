@@ -1,5 +1,12 @@
+/* Params type */
+typedef  struct {
+    double first;
+    double second;
+} params;
+
 /* Function type.  */
 typedef double (*func_t) (double);
+typedef double (*func_p) (params);
      
 /* Data type for links in the chain of symbols.  */
 struct symrec
@@ -10,6 +17,7 @@ struct symrec
     {
       double var;      /* value of a VAR */
       func_t fnctptr;  /* value of a FNCT */
+      func_p fncpptr;  /* value of a FNCP */
     } value;
     struct symrec *next;  /* link field */
 };

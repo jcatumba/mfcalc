@@ -24,6 +24,7 @@ char    [a-zA-z]
 {char}+        { symrec *s = getsym(yytext); if (s==0) s = putsym(yytext, VAR) ; yylval.tptr = s; return s->type; }
 "("            { return LP; }
 ")"            { return RP; }
+","            { return COMMA; }
 [ \t]+         { }
 "\n"           { return STOP; }
 

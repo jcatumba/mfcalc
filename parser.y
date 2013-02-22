@@ -20,8 +20,8 @@
 
 %token <val> NUM /* Simple double precision number */
 %token <sym> LP RP LA RA LB RB COMMA COLON PLUS MINUS TIMES OVER EQ TO STOP
-%token <tptr> VAR FNCT /* Variable and function */
-%type <val> exp
+%token <tptr> VAR FNCT FNCP /* Variable and functions */
+%type <val> exp csv
 
 %right EQ
 %left PLUS MINUS
@@ -45,12 +45,16 @@ exp         : NUM               { $$ = $1; }
             | VAR               { $$ = $1->value.var; }
             | VAR EQ exp        { $$ = $3; $1->value.var = $3; }
             | FNCT LP exp RP    { $$ = (*($1->value.fnctptr))($3); }
+            | FNCP LP csv RP    { $$ = (*($1->value.fnctptr))($3); }
             | exp PLUS exp      { $$ = $1 + $3; }
             | exp MINUS exp     { $$ = $1 - $3; }
             | exp TIMES exp     { $$ = $1 * $3; }
             | exp OVER exp      { $$ = $1 / $3; }
             | exp TO exp        { $$ = pow ($1, $3); }
             | LP exp RP         { $$ = $2; }
+;
+
+csv         : NUM COMMA NUM
 ;
 
 /* End of grammar */
