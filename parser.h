@@ -29,3 +29,7 @@ extern symrec *sym_table;
      
 symrec *putsym (char const *, int);
 symrec *getsym (char const *);
+
+/* The functions with two parameters */
+double max (params);
+double min (params);
