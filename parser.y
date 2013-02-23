@@ -43,13 +43,13 @@ line        : STOP
 ;
 
 genericexp  : basicexp
-            | FNCT LP basicexp RP  { $$ = (*($1->value.fnctptr))($3); }
             | FNCP LP csv RP       { $$ = (*($1->value.fncpptr))(s); }
 ;
 
 basicexp    : NUM                      { $$ = $1; }
             | VAR                      { $$ = $1->value.var; }
             | VAR EQ basicexp          { $$ = $3; $1->value.var = $3; }
+            | FNCT LP basicexp RP      { $$ = (*($1->value.fnctptr))($3); }
             | basicexp PLUS basicexp   { $$ = $1 + $3; }
             | basicexp MINUS basicexp  { $$ = $1 - $3; }
             | basicexp TIMES basicexp  { $$ = $1 * $3; }
@@ -227,7 +227,8 @@ void clear_stack () {
 }
 
 double max (stack *p) {
-    int i, max;
+    int i;
+    double max;
     max = s->value.number;
     for (i=s->top; i>=1; i--) {
         if (max < s->next->value.number )
@@ -238,7 +239,8 @@ double max (stack *p) {
 }
 
 double min (stack *p) {
-    int i, min;
+    int i;
+    double min;
     min = s->value.number;
     for (i=s->top; i>=1; i--) {
         if (min > s->next->value.number )
