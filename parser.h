@@ -1,3 +1,8 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#define MAXSIZE 10 /* change to use dynamic size */
+
 /* Params type */
 typedef  struct {
     double first;
@@ -33,3 +38,31 @@ symrec *getsym (char const *);
 /* The functions with two parameters */
 double max (params);
 double min (params);
+
+/* Stacks */
+
+/* Union definition for data */
+typedef union {
+    double number;
+    char string[16];
+} data;
+
+ /* Structure definition for stack */
+struct stack {
+    int top;
+    int type; /* type of element on stack VAR, STR */
+    data value;
+    struct stack *next;
+};
+
+typedef struct stack stack;
+stack *s;
+
+/* Functions for add to stack */
+void push (int, double);
+int pop (void);
+void display (void);
+
+/* Functions to handle stack structs */
+stack * putitem (int, int);
+stack * getitem (int);

@@ -16,10 +16,10 @@
     double val;
     char sym;
     symrec *tptr;
-    params par;
+    stack stk;
 }
 
-%token <val> NUM /* Simple double precision number */
+%token <val> NUM STR /* Simple double precision number */
 %token <sym> LP RP LA RA LB RB COMMA COLON PLUS MINUS TIMES OVER EQ TO STOP
 %token <tptr> VAR FNCT FNCP /* Variable and functions */
 %type <val> /*exp*/ basicexp genericexp csv
@@ -42,24 +42,24 @@ line        : STOP
             | error STOP { yyerrok; }
 ;
 
-genericexp  : csv
-/*            | FNCP LP csv RP    { $$ = (*($1->value.fncpptr))($3); }*/
+genericexp  : basicexp 
+            | FNCT LP basicexp RP  { $$ = (*($1->value.fnctptr))($3); }
+            | FNCP LP csv RP       { $$ = (*($1->value.fncpptr))($3); }
 ;
 
-basicexp    : NUM               { $$ = $1; }
-            | VAR               { $$ = $1->value.var; }
-            | VAR EQ basicexp        { $$ = $3; $1->value.var = $3; }
-            | FNCT LP basicexp RP { $$ = (*($1->value.fnctptr))($3); }
-            | basicexp PLUS basicexp      { $$ = $1 + $3; }
-            | basicexp MINUS basicexp     { $$ = $1 - $3; }
-            | basicexp TIMES basicexp     { $$ = $1 * $3; }
-            | basicexp OVER basicexp      { $$ = $1 / $3; }
-            | basicexp TO basicexp        { $$ = pow ($1, $3); }
-            | LP basicexp RP         { $$ = $2; }
+basicexp    : NUM                      { $$ = $1; }
+            | VAR                      { $$ = $1->value.var; }
+            | VAR EQ basicexp          { $$ = $3; $1->value.var = $3; }
+            | basicexp PLUS basicexp   { $$ = $1 + $3; }
+            | basicexp MINUS basicexp  { $$ = $1 - $3; }
+            | basicexp TIMES basicexp  { $$ = $1 * $3; }
+            | basicexp OVER basicexp   { $$ = $1 / $3; }
+            | basicexp TO basicexp     { $$ = pow ($1, $3); }
+            | LP basicexp RP           { $$ = $2; }
 ;
 
-csv         : basicexp
-            | csv COMMA basicexp{ $$ = $3; /* put something here */}
+csv         : basicexp           { push(NUM, $1); }
+            | csv COMMA basicexp { push(NUM, $3); }
 ;
 
 /* End of grammar */
@@ -107,16 +107,6 @@ void init_table (void) {
     }
 }
 
-/*int main(int argc, char const* argv[]) {
-    int i;
-    for (i=1; i < argc; ++i)
-        if(!strcmp(argv[i], "-p"))
-            yydebug = 1;
-    init_table ();
-    //printf("%i\n", yyparse());
-    return yyparse ();
-}*/
-
 symrec * putsym (char const *sym_name, int sym_type) {
     symrec *ptr = (symrec*) malloc (sizeof (symrec));
     ptr->name = (char*) malloc (strlen (sym_name) + 1);
@@ -143,6 +133,87 @@ void yyprint(FILE *file, int type, YYSTYPE value) {
         fprintf(file, " %s", value.tptr->name);
     else if (type == NUM)
         fprintf(file, " %g", value.val);
+}
+
+/*Function to add an element to the stack*/
+void push (int type, double val) {
+    if (s->top == (MAXSIZE - 1)) {
+        return;
+    } else {
+        switch (type) {
+            //case STR:
+            //    s = putitem (s->top+1, STR);
+            //    strcpy(s->value.string, val.string);
+            //    break;
+            case NUM:
+                s = putitem (s->top+1, NUM);
+                s->value.number = val;
+                break;
+            default:
+                break;
+        }
+    }
+    return;
+}
+
+/*Function to delete an element from the stack*/
+int pop () {
+    int type;
+    if (s->top == -1) {
+        return (s->top);
+    } else {
+        type = s->type;
+        //if (type == STR)
+            //printf ("poped element is = %s\n", s->value.string);
+        //else if (type == NUM)
+            //printf ("poped element is = %.10g\n", s->value.number);
+        s = s->next;
+    }
+    return(s->top);
+}
+
+/*Function to display the status of the stack*/
+void display () {
+    int i, type;
+    if (s->top == -1) {
+        //printf ("Stack is empty\n");
+        return;
+    } else {
+        //printf ("\nThe status of the stack is\n");
+        for (i = s->top; i >= 0; i--) {
+            stack *ptr = getitem (i);
+            type = ptr->type;
+            if (type == STR)
+                printf ("%s\n", ptr->value.string);
+            else if (type == NUM)
+                printf ("%.10g\n", ptr->value.number);
+        }
+    }
+    printf ("\n");
+}
+
+/* Function to put a stack item */
+stack * putitem (int top, int type) {
+    stack *ptr = getitem (top);
+    if (ptr == 0) {
+        ptr = (stack*) malloc (sizeof (stack));
+    }
+    ptr->top = top;
+    ptr->type = type;
+    ptr->next = s;
+    s = ptr;
+    return ptr;
+}
+
+/* Function to get a stack item */
+stack * getitem (int top) {
+    stack *ptr;
+    for (ptr = s; ptr != (stack *) 0; ptr = (stack *) ptr->next) {
+        if (ptr->top == top) {
+            return ptr;
+        }
+    }
+    return 0;
 }
 
 double max (params p) {

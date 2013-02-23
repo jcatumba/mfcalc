@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "parser.h"
 
 extern FILE *yyin;
 extern int yyparse(void);
@@ -10,6 +11,7 @@ extern int yyparse(void);
 int main (int argc, char const *argv[]){
     char command[256];
     init_table();
+    s = (stack*) malloc (sizeof (stack));
 
     while (1) {
         printf ("[mfcalc]: ");
