@@ -227,19 +227,23 @@ void clear_stack () {
 }
 
 double max (stack *p) {
-    double num1 = p->next->value.number;
-    double num2 = p->value.number;
-    if (num1 < num2)
-        return num2;
-    else
-        return num1;
+    int i, max;
+    max = s->value.number;
+    for (i=s->top; i>=1; i--) {
+        if (max < s->next->value.number )
+            max = s->next->value.number;
+        pop ();
+    }
+    return max;
 }
 
 double min (stack *p) {
-    double num1 = p->next->value.number;
-    double num2 = p->value.number;
-    if (num1 > num2)
-        return num2;
-    else
-        return num1;
+    int i, min;
+    min = s->value.number;
+    for (i=s->top; i>=1; i--) {
+        if (min > s->next->value.number )
+            min = s->next->value.number;
+        pop ();
+    }
+    return min;
 }
