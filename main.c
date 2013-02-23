@@ -12,6 +12,7 @@ int main (int argc, char const *argv[]){
     char command[256];
     init_table();
     s = (stack*) malloc (sizeof (stack));
+    s->top = -1;
 
     while (1) {
         printf ("[mfcalc]: ");

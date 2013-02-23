@@ -9,9 +9,28 @@ typedef  struct {
     double second;
 } params;
 
+/* Stacks */
+
+/* Union definition for data */
+typedef union {
+    double number;
+    char string[16];
+} data;
+
+ /* Structure definition for stack */
+struct stack {
+    int top;
+    int type; /* type of element on stack VAR, STR */
+    data value;
+    struct stack *next;
+};
+
+typedef struct stack stack;
+stack *s;
+
 /* Function type.  */
 typedef double (*func_t) (double);
-typedef double (*func_p) (params);
+typedef double (*func_p) (stack *);
      
 /* Data type for links in the chain of symbols.  */
 struct symrec
@@ -35,29 +54,6 @@ extern symrec *sym_table;
 symrec *putsym (char const *, int);
 symrec *getsym (char const *);
 
-/* The functions with two parameters */
-double max (params);
-double min (params);
-
-/* Stacks */
-
-/* Union definition for data */
-typedef union {
-    double number;
-    char string[16];
-} data;
-
- /* Structure definition for stack */
-struct stack {
-    int top;
-    int type; /* type of element on stack VAR, STR */
-    data value;
-    struct stack *next;
-};
-
-typedef struct stack stack;
-stack *s;
-
 /* Functions for add to stack */
 void push (int, double);
 int pop (void);
@@ -66,3 +62,8 @@ void display (void);
 /* Functions to handle stack structs */
 stack * putitem (int, int);
 stack * getitem (int);
+void clear_stack (void);
+
+/* The functions with two parameters */
+double max (stack *);
+double min (stack *);

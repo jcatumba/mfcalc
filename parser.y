@@ -38,13 +38,13 @@ input       : /* empty */
 ;
 
 line        : STOP      
-            | genericexp STOP { printf ( ">>> %.10g\n", $1 ); }
+            | genericexp STOP { printf ( "[%d] >>> %.10g\n", s->top, $1 ); clear_stack(); }
             | error STOP { yyerrok; }
 ;
 
-genericexp  : basicexp 
+genericexp  : basicexp
             | FNCT LP basicexp RP  { $$ = (*($1->value.fnctptr))($3); }
-            | FNCP LP csv RP       { $$ = (*($1->value.fncpptr))($3); }
+            | FNCP LP csv RP       { $$ = (*($1->value.fncpptr))(s); }
 ;
 
 basicexp    : NUM                      { $$ = $1; }
@@ -67,14 +67,14 @@ csv         : basicexp           { push(NUM, $1); }
 
 /* Called by yyparse on error. */
 void yyerror( char const *s ) {
-    fprintf( stderr, "netext: %s\n", s );
+    fprintf( stderr, "mfcalc: %s\n", s );
 }
 
 struct init {
     char const *fname;
     union {
         double (*fnc1) (double);
-        double (*fnc2) (params);
+        double (*fnc2) (stack *);
     } fnct;
 };
 
@@ -98,10 +98,11 @@ symrec *sym_table;
 void init_table (void) {
     int i;
     for (i=0; arith_fncts[i].fname != 0; i++) {
-        symrec *ptr = putsym (arith_fncts[i].fname, FNCT);
         if (i <= 5) {
+            symrec *ptr = putsym (arith_fncts[i].fname, FNCT);
             ptr->value.fnctptr = arith_fncts[i].fnct.fnc1;
         } else {
+            symrec *ptr = putsym (arith_fncts[i].fname, FNCP);
             ptr->value.fncpptr = arith_fncts[i].fnct.fnc2;
         }
     }
@@ -169,7 +170,7 @@ int pop () {
             //printf ("poped element is = %.10g\n", s->value.number);
         s = s->next;
     }
-    return(s->top);
+    return s->top;
 }
 
 /*Function to display the status of the stack*/
@@ -216,16 +217,29 @@ stack * getitem (int top) {
     return 0;
 }
 
-double max (params p) {
-    if (p.first < p.second)
-        return p.second;
-    else
-        return p.first;
+/* Function to clear the stack */
+void clear_stack () {
+    int i, j;
+    for (i = s->top; i>=0; i--) {
+        pop ();
+    }
+    return;
 }
 
-double min (params p) {
-    if (p.first > p.second)
-        return p.second;
+double max (stack *p) {
+    double num1 = p->next->value.number;
+    double num2 = p->value.number;
+    if (num1 < num2)
+        return num2;
     else
-        return p.first;
+        return num1;
+}
+
+double min (stack *p) {
+    double num1 = p->next->value.number;
+    double num2 = p->value.number;
+    if (num1 > num2)
+        return num2;
+    else
+        return num1;
 }
