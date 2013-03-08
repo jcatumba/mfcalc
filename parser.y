@@ -113,6 +113,7 @@ datatype do_arith (datatype one, datatype two, int operator) {
                 break;
             case TO:
                 result.data.num = pow (one.data.num, two.data.num);
+                break;
         }
         result.type = NUM;
     } else if (one.type == STR && two.type == STR) {

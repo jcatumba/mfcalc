@@ -22,7 +22,7 @@ all     [[:alnum:][:blank:]]
 "/"            { yylval.sym = yytext[0]; return OVER; }
 "^"            { yylval.sym = yytext[0]; return TO; }
 "="            { yylval.sym = yytext[0]; return EQ; }
-'{all}*'       { char str[50]; strcpy(yylval.val.data.str, yytext); return STR; }
+'{all}*'       { strcpy(yylval.val.data.str, yytext); return STR; }
 \"{all}*\"     { strcpy(yylval.val.data.str, yytext); return STR; }
 {char}+        { symrec *sym = getsym (yytext); if (sym==0) sym = putsym(yytext, VAR) ; yylval.tptr = sym; return sym->type; }
 "("            { return LP; }
