@@ -10,7 +10,7 @@ extern int yyparse(void);
 
 int main (int argc, char const *argv[]){
     char command[256];
-    init_table();
+    init_table ();
     s = (stack*) malloc (sizeof (stack));
     s->top = -1;
 

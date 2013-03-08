@@ -36,7 +36,7 @@ Supported operations
       [mfcalc]: exp(3)
       [mfcalc]: sin(3.14159)
       [mfcalc]: max(15, 3*8)
-      [mfcacl]: min(7/6, 4)
+      [mfcacl]: min(7/6, 4, ln(4))
 
 ### Variable definition
 
@@ -46,3 +46,7 @@ Supported operations
 ### Composition
 
       [mfcalc]: ln(sin(pi))
+
+### Echoed strings
+
+      [mfcalc]: "hello"

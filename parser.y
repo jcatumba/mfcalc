@@ -1,66 +1,70 @@
 %{
+    #include "parser.h"
     #include <math.h>
     #include <stdio.h>
     #include <string.h>
     #include <stdlib.h>
     #include <ctype.h>
-    #include "parser.h"
     #define YYDEBUG 1
     #define YYPRINT(file, type, value) yyprint(file, type, value)
     int yylex(void);
     void yyerror(char const*s);
     void yyprint();
+    void put_output (datatype);
+    datatype num_to_datatype (double);
+    datatype str_to_datatype (char[50]);
+    datatype do_arith (datatype, datatype, int);
 %}
 
 %union {
-    double val;
+    datatype val;
     char sym;
     symrec *tptr;
-    stack stk;
 }
 
 %token <val> NUM STR /* Simple double precision number */
-%token <sym> LP RP LA RA LB RB COMMA COLON PLUS MINUS TIMES OVER EQ TO STOP
+%token <sym> LP RP LS RS LB RB COMMA COLON PLUS MINUS TIMES OVER EQ TO STOP
 %token <tptr> VAR FNCT FNCP /* Variable and functions */
-%type <val> /*exp*/ basicexp genericexp csv
+%type <val> basic hashable
 
 %right EQ
 %left PLUS MINUS
 %left TIMES OVER
 %right TO
 %right COMMA
-/*%right COLON*/
+%right COLON
 
 %% /* The grammar follows */
 
 input       : /* empty */
             | input line
-;
+            ;
 
 line        : STOP      
-            | genericexp STOP { printf ( "[%d] >>> %.10g\n", s->top, $1 ); clear_stack(); }
+            | basic STOP { put_output ($1); clear_stack(); }
             | error STOP { yyerrok; }
-;
+            ;
 
-genericexp  : basicexp
-            | FNCP LP csv RP       { $$ = (*($1->value.fncpptr))(s); }
-;
+hashable    : NUM           { double num = $1.data.num; $$ = num_to_datatype (num); }
+            | STR           { char *str = $1.data.str; $$ = str_to_datatype (str); }
+            ;
 
-basicexp    : NUM                      { $$ = $1; }
-            | VAR                      { $$ = $1->value.var; }
-            | VAR EQ basicexp          { $$ = $3; $1->value.var = $3; }
-            | FNCT LP basicexp RP      { $$ = (*($1->value.fnctptr))($3); }
-            | basicexp PLUS basicexp   { $$ = $1 + $3; }
-            | basicexp MINUS basicexp  { $$ = $1 - $3; }
-            | basicexp TIMES basicexp  { $$ = $1 * $3; }
-            | basicexp OVER basicexp   { $$ = $1 / $3; }
-            | basicexp TO basicexp     { $$ = pow ($1, $3); }
-            | LP basicexp RP           { $$ = $2; }
-;
+basic       : hashable
+            | VAR                { $$ = $1->value.var; }
+            | VAR EQ basic       { $$ = $3; $1->value.var = $3; }
+            | FNCT LP basic RP   { $$.data.num = (*($1->value.fnctptr))($3.data.num); $$.type = NUM; }
+            | FNCP LP csv RP     { $$.data.num = (*($1->value.fncpptr))(s); $$.type = NUM; }
+            | basic PLUS basic   { $$ = do_arith ($1, $3, PLUS); }
+            | basic MINUS basic  { $$ = do_arith ($1, $3, MINUS); }
+            | basic TIMES basic  { $$ = do_arith ($1, $3, TIMES); }
+            | basic OVER basic   { $$ = do_arith ($1, $3, OVER); }
+            | basic TO basic     { $$ = do_arith ($1, $3, TO); }
+            | LP basic RP        { $$.data.num = $2.data.num; $$.type = NUM; }
+            ;
 
-csv         : basicexp           { push(NUM, $1); }
-            | csv COMMA basicexp { push(NUM, $3); }
-;
+csv         : basic           { push ($1); }
+            | csv COMMA basic { push ($3); }
+            ;
 
 /* End of grammar */
 %%
@@ -68,6 +72,76 @@ csv         : basicexp           { push(NUM, $1); }
 /* Called by yyparse on error. */
 void yyerror( char const *s ) {
     fprintf( stderr, "mfcalc: %s\n", s );
+}
+
+void yyprint(FILE *file, int type, YYSTYPE value) {
+    if (type == VAR)
+        fprintf(file, " %s", value.tptr->name);
+    else if (type == NUM)
+        fprintf(file, " %g", value.val);
+}
+
+void put_output (datatype val) {
+    int type = val.type;
+    switch (type) {
+        case NUM:
+            printf (">>> %.10g\n", val.data.num);
+            break;
+        case STR:
+            printf (">>> %s\n", val.data.str);
+        default:
+            break;
+    }
+    clear_stack ();
+}
+
+datatype do_arith (datatype one, datatype two, int operator) {
+    datatype result;
+    if (one.type == NUM && two.type == NUM ) {
+        switch (operator) {
+            case PLUS:
+                result.data.num = one.data.num + two.data.num;
+                break;
+            case MINUS:
+                result.data.num = one.data.num - two.data.num;
+                break;
+            case TIMES:
+                result.data.num = one.data.num * two.data.num;
+                break;
+            case OVER:
+                result.data.num = one.data.num / two.data.num;
+                break;
+            case TO:
+                result.data.num = pow (one.data.num, two.data.num);
+        }
+        result.type = NUM;
+    } else if (one.type == STR && two.type == STR) {
+        switch (operator) {
+            case PLUS:
+                strcpy (result.data.str, one.data.str);
+                strcat (result.data.str, two.data.str);
+                break;
+            default:
+                strcpy(result.data.str, "Incorrect types on operands.");
+                break;
+        }
+        result.type = STR;
+    }
+    return result;
+}
+
+datatype num_to_datatype (double num) {
+    datatype ptr;
+    ptr.type = NUM;
+    ptr.data.num = num;
+    return ptr;
+}
+
+datatype str_to_datatype (char str[50]) {
+    datatype ptr;
+    ptr.type = STR;
+    strcpy(ptr.data.str, str);
+    return ptr;
 }
 
 struct init {
@@ -113,7 +187,7 @@ symrec * putsym (char const *sym_name, int sym_type) {
     ptr->name = (char*) malloc (strlen (sym_name) + 1);
     strcpy (ptr->name, sym_name);
     ptr->type = sym_type;
-    ptr->value.var = 0; /* Set value to 0 even if fctn */
+    ptr->value.var.data.num = 0; /* Set value to 0 even if fctn */
     ptr->next = (struct symrec *)sym_table;
     sym_table = ptr;
     return ptr;
@@ -129,26 +203,19 @@ symrec * getsym (char const *sym_name) {
     return 0;
 }
 
-void yyprint(FILE *file, int type, YYSTYPE value) {
-    if (type == VAR)
-        fprintf(file, " %s", value.tptr->name);
-    else if (type == NUM)
-        fprintf(file, " %g", value.val);
-}
-
 /*Function to add an element to the stack*/
-void push (int type, double val) {
+void push (datatype val) {
     if (s->top == (MAXSIZE - 1)) {
-        return;
+        return; /* stack is full */
     } else {
-        switch (type) {
-            //case STR:
-            //    s = putitem (s->top+1, STR);
-            //    strcpy(s->value.string, val.string);
-            //    break;
+        switch (val.type) {
+            case STR:
+                s = putitem (s->top+1, STR);
+                strcpy(s->value.string, val.data.str);
+                break;
             case NUM:
                 s = putitem (s->top+1, NUM);
-                s->value.number = val;
+                s->value.number = val.data.num;
                 break;
             default:
                 break;
@@ -161,13 +228,9 @@ void push (int type, double val) {
 int pop () {
     int type;
     if (s->top == -1) {
-        return (s->top);
+        return (s->top); /* stack is empty */
     } else {
         type = s->type;
-        //if (type == STR)
-            //printf ("poped element is = %s\n", s->value.string);
-        //else if (type == NUM)
-            //printf ("poped element is = %.10g\n", s->value.number);
         s = s->next;
     }
     return s->top;
@@ -177,10 +240,8 @@ int pop () {
 void display () {
     int i, type;
     if (s->top == -1) {
-        //printf ("Stack is empty\n");
-        return;
+        return; /* stack is empty */
     } else {
-        //printf ("\nThe status of the stack is\n");
         for (i = s->top; i >= 0; i--) {
             stack *ptr = getitem (i);
             type = ptr->type;
@@ -191,6 +252,14 @@ void display () {
         }
     }
     printf ("\n");
+}
+
+/* Function to clear the stack */
+void clear_stack () {
+    int i, j;
+    for (i = s->top; i>=0; i--)
+        pop ();
+    return;
 }
 
 /* Function to put a stack item */
@@ -215,15 +284,6 @@ stack * getitem (int top) {
         }
     }
     return 0;
-}
-
-/* Function to clear the stack */
-void clear_stack () {
-    int i, j;
-    for (i = s->top; i>=0; i--) {
-        pop ();
-    }
-    return;
 }
 
 double max (stack *p) {
