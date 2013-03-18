@@ -1,21 +1,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define MAXSIZE 10 /* change to use dynamic size */
+#define MAXSIZE 10 /* change to use more or less size */
 
-/* Stacks */
+//
+// Stacks
+//
 
-/* Union definition for data */
 typedef union {
-    double number;
-    char string[50];
+    double num;
+    char str[50];
+    //tuple tup;
 } data;
+
+typedef struct {
+    int type;
+    data value;
+} typed;
 
 /* Structure definition for stack */
 struct stack {
     int top;
-    int type; /* type of element on stack VAR, STR */
-    data value;
+    typed value;
     struct stack *next;
 };
 
@@ -26,22 +32,29 @@ stack *s;
 typedef double (*func_t) (double);
 typedef double (*func_p) (stack *);
 
-typedef union {
-    double num;
-    char str[50];
-} varval;
+//
+// Tuples
+//
 
-typedef struct {
-    int type; /* Type of data: NUM or STR */
-    varval data;
-} datatype;
+struct tuple {
+    int pos;
+    typed value;
+    struct tuple *next;
+    struct tuple *prev;
+};
 
-/* Data type for links in the chain of symbols.  */
+typedef struct tuple tuple;
+
+//
+// Symrec (chain of symbols)
+//
+
+/* Data type for links in the chain of symbols. (Holds functions and variables) */
 struct symrec {
     char *name;  /* name of symbol */
-    int type;    /* type of symbol: either VAR or FNCT */
+    int type;    /* type of symbol: either VAR or FNCT or FNCP */
     union {
-      datatype var;      /* value of a VAR */
+      typed var;  /* value of a VAR */
       func_t fnctptr;  /* value of a FNCT */
       func_p fncpptr;  /* value of a FNCP */
     } value;
@@ -57,7 +70,7 @@ symrec *putsym (char const *, int);
 symrec *getsym (char const *);
 
 /* Functions for add to stack */
-void push (datatype);
+void push (typed);
 int pop (void);
 void display (void);
 void clear_stack (void);

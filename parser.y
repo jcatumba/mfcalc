@@ -10,14 +10,14 @@
     int yylex(void);
     void yyerror(char const*s);
     void yyprint();
-    void put_output (datatype);
-    datatype num_to_datatype (double);
-    datatype str_to_datatype (char[50]);
-    datatype do_arith (datatype, datatype, int);
+    void put_output (typed);
+    typed num_to_typed (double);
+    typed str_to_typed (char[50]);
+    typed do_arith (typed, typed, int);
 %}
 
 %union {
-    datatype val;
+    typed val;
     char sym;
     symrec *tptr;
 }
@@ -25,7 +25,7 @@
 %token <val> NUM STR /* Simple double precision number */
 %token <sym> LP RP LS RS LB RB COMMA COLON PLUS MINUS TIMES OVER EQ TO STOP
 %token <tptr> VAR FNCT FNCP /* Variable and functions */
-%type <val> basic hashable
+%type <val> basic hashable tuple
 
 %right EQ
 %left PLUS MINUS
@@ -45,27 +45,31 @@ line        : STOP
             | error STOP { yyerrok; }
             ;
 
-hashable    : NUM           { double num = $1.data.num; $$ = num_to_datatype (num); }
-            | STR           { char *str = $1.data.str; $$ = str_to_datatype (str); }
+hashable    : NUM           { double num = $1.value.num; $$ = num_to_typed (num); }
+            | STR           { char *str = $1.value.str; $$ = str_to_typed (str); }
+            | tuple
             ;
 
 basic       : hashable
             | VAR                { $$ = $1->value.var; }
             | VAR EQ basic       { $$ = $3; $1->value.var = $3; }
-            | FNCT LP basic RP   { $$.data.num = (*($1->value.fnctptr))($3.data.num); $$.type = NUM; }
-            | FNCP LP csv RP     { $$.data.num = (*($1->value.fncpptr))(s); $$.type = NUM; }
+            | FNCT tuple         { $$.value.num = (*($1->value.fnctptr))($2.value.num); $$.type = NUM; }
+            | FNCP tuple         { $$.value.num = (*($1->value.fncpptr))(s); $$.type = NUM; }
             | basic PLUS basic   { $$ = do_arith ($1, $3, PLUS); }
             | basic MINUS basic  { $$ = do_arith ($1, $3, MINUS); }
             | basic TIMES basic  { $$ = do_arith ($1, $3, TIMES); }
             | basic OVER basic   { $$ = do_arith ($1, $3, OVER); }
             | basic TO basic     { $$ = do_arith ($1, $3, TO); }
-            | LP basic RP        { $$.data.num = $2.data.num; $$.type = NUM; }
+            | LP basic RP        { $$.value.num = $2.value.num; $$.type = NUM; }
             ;
 
 csv         : basic           { push ($1); }
             | csv COMMA basic { push ($3); }
             ;
 
+tuple       : LP RP         { $$.value.num = 0; }
+            | LP csv RP     { $$.value.num = 0; }
+            ;
 /* End of grammar */
 %%
 
@@ -81,49 +85,49 @@ void yyprint(FILE *file, int type, YYSTYPE value) {
         fprintf(file, " %g", value.val);
 }
 
-void put_output (datatype val) {
+void put_output (typed val) {
     int type = val.type;
     switch (type) {
         case NUM:
-            printf (">>> %.10g\n", val.data.num);
+            printf (">>> %.10g\n", val.value.num);
             break;
         case STR:
-            printf (">>> %s\n", val.data.str);
+            printf (">>> %s\n", val.value.str);
         default:
             break;
     }
     clear_stack ();
 }
 
-datatype do_arith (datatype one, datatype two, int operator) {
-    datatype result;
+typed do_arith (typed one, typed two, int operator) {
+    typed result;
     if (one.type == NUM && two.type == NUM ) {
         switch (operator) {
             case PLUS:
-                result.data.num = one.data.num + two.data.num;
+                result.value.num = one.value.num + two.value.num;
                 break;
             case MINUS:
-                result.data.num = one.data.num - two.data.num;
+                result.value.num = one.value.num - two.value.num;
                 break;
             case TIMES:
-                result.data.num = one.data.num * two.data.num;
+                result.value.num = one.value.num * two.value.num;
                 break;
             case OVER:
-                result.data.num = one.data.num / two.data.num;
+                result.value.num = one.value.num / two.value.num;
                 break;
             case TO:
-                result.data.num = pow (one.data.num, two.data.num);
+                result.value.num = pow (one.value.num, two.value.num);
                 break;
         }
         result.type = NUM;
     } else if (one.type == STR && two.type == STR) {
         switch (operator) {
             case PLUS:
-                strcpy (result.data.str, one.data.str);
-                strcat (result.data.str, two.data.str);
+                strcpy (result.value.str, one.value.str);
+                strcat (result.value.str, two.value.str);
                 break;
             default:
-                strcpy(result.data.str, "Incorrect types on operands.");
+                strcpy(result.value.str, "Incorrect types on operands.");
                 break;
         }
         result.type = STR;
@@ -131,17 +135,17 @@ datatype do_arith (datatype one, datatype two, int operator) {
     return result;
 }
 
-datatype num_to_datatype (double num) {
-    datatype ptr;
+typed num_to_typed (double num) {
+    typed ptr;
     ptr.type = NUM;
-    ptr.data.num = num;
+    ptr.value.num = num;
     return ptr;
 }
 
-datatype str_to_datatype (char str[50]) {
-    datatype ptr;
+typed str_to_typed (char str[50]) {
+    typed ptr;
     ptr.type = STR;
-    strcpy(ptr.data.str, str);
+    strcpy(ptr.value.str, str);
     return ptr;
 }
 
@@ -188,7 +192,7 @@ symrec * putsym (char const *sym_name, int sym_type) {
     ptr->name = (char*) malloc (strlen (sym_name) + 1);
     strcpy (ptr->name, sym_name);
     ptr->type = sym_type;
-    ptr->value.var.data.num = 0; /* Set value to 0 even if fctn */
+    ptr->value.var.value.num = 0; /* Set value to 0 even if fctn */
     ptr->next = (struct symrec *)sym_table;
     sym_table = ptr;
     return ptr;
@@ -204,19 +208,19 @@ symrec * getsym (char const *sym_name) {
     return 0;
 }
 
-/*Function to add an element to the stack*/
-void push (datatype val) {
+/* Function to add an element to the stack */
+void push (typed val) {
     if (s->top == (MAXSIZE - 1)) {
         return; /* stack is full */
     } else {
         switch (val.type) {
             case STR:
                 s = putitem (s->top+1, STR);
-                strcpy(s->value.string, val.data.str);
+                strcpy(s->value.value.str, val.value.str);
                 break;
             case NUM:
                 s = putitem (s->top+1, NUM);
-                s->value.number = val.data.num;
+                s->value.value.num = val.value.num;
                 break;
             default:
                 break;
@@ -225,13 +229,13 @@ void push (datatype val) {
     return;
 }
 
-/*Function to delete an element from the stack*/
+/* Function to delete an element from the stack */
 int pop () {
-    int type;
+    //int type;
     if (s->top == -1) {
         return (s->top); /* stack is empty */
     } else {
-        type = s->type;
+        //type = s->type;
         s = s->next;
     }
     return s->top;
@@ -245,11 +249,11 @@ void display () {
     } else {
         for (i = s->top; i >= 0; i--) {
             stack *ptr = getitem (i);
-            type = ptr->type;
+            type = ptr->value.type;
             if (type == STR)
-                printf ("%s\n", ptr->value.string);
+                printf ("%s\n", ptr->value.value.str);
             else if (type == NUM)
-                printf ("%.10g\n", ptr->value.number);
+                printf ("%.10g\n", ptr->value.value.num);
         }
     }
     printf ("\n");
@@ -257,7 +261,7 @@ void display () {
 
 /* Function to clear the stack */
 void clear_stack () {
-    int i, j;
+    int i;
     for (i = s->top; i>=0; i--)
         pop ();
     return;
@@ -270,7 +274,7 @@ stack * putitem (int top, int type) {
         ptr = (stack*) malloc (sizeof (stack));
     }
     ptr->top = top;
-    ptr->type = type;
+    ptr->value.type = type;
     ptr->next = s;
     s = ptr;
     return ptr;
@@ -289,11 +293,11 @@ stack * getitem (int top) {
 
 double max (stack *p) {
     int i;
-    double max;
-    max = s->value.number;
-    for (i=s->top; i>=1; i--) {
-        if (max < s->next->value.number )
-            max = s->next->value.number;
+    //double max;
+    double max = p->value.value.num;
+    for (i=p->top; i>=1; i--) {
+        if (max < p->next->value.value.num )
+            max = p->next->value.value.num;
         pop ();
     }
     return max;
@@ -302,10 +306,10 @@ double max (stack *p) {
 double min (stack *p) {
     int i;
     double min;
-    min = s->value.number;
-    for (i=s->top; i>=1; i--) {
-        if (min > s->next->value.number )
-            min = s->next->value.number;
+    min = p->value.value.num;
+    for (i=p->top; i>=1; i--) {
+        if (min > p->next->value.value.num )
+            min = p->next->value.value.num;
         pop ();
     }
     return min;

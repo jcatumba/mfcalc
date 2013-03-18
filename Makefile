@@ -12,7 +12,7 @@ lex.yy.c: parser.lex parser.tab.c
 parsery.o: parser.tab.c
 	gcc -g -c $< -o $@
 
-parser.tab.c: parser.y
+parser.tab.c: parser.y parser.h
 	bison --defines=parser.tab.h $<
 
 main.o:	main.c
