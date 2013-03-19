@@ -12,7 +12,7 @@ typedef struct tuple tuple;
 typedef union {
     double num;
     char str[50];
-    struct tuple* tup;
+    tuple* tup;
 } data;
 
 typedef struct {
