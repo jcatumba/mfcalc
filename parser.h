@@ -7,10 +7,12 @@
 // Stacks
 //
 
+typedef struct tuple tuple;
+
 typedef union {
     double num;
     char str[50];
-    //tuple tup;
+    struct tuple* tup;
 } data;
 
 typedef struct {
@@ -42,8 +44,6 @@ struct tuple {
     struct tuple *next;
     struct tuple *prev;
 };
-
-typedef struct tuple tuple;
 
 //
 // Symrec (chain of symbols)
