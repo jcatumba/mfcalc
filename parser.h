@@ -3,16 +3,16 @@
 #include <string.h>
 #define MAXSIZE 10 /* change to use more or less size */
 
+typedef struct tuple tuple;
+
 //
 // Stacks
 //
 
-typedef struct tuple tuple;
-
 typedef union {
     double num;
     char str[50];
-    tuple* tup;
+    tuple *tup;
 } data;
 
 typedef struct {
@@ -30,10 +30,6 @@ struct stack {
 typedef struct stack stack;
 stack *s;
 
-/* Function type.  */
-typedef double (*func_t) (double);
-typedef double (*func_p) (stack *);
-
 //
 // Tuples
 //
@@ -41,9 +37,13 @@ typedef double (*func_p) (stack *);
 struct tuple {
     int pos;
     typed value;
-    struct tuple *next;
-    struct tuple *prev;
+    tuple *next;
+    tuple *prev;
 };
+
+/* Function type.  */
+typedef double (*func_t) (double);
+typedef double (*func_p) (typed);
 
 //
 // Symrec (chain of symbols)
@@ -71,7 +71,7 @@ symrec *getsym (char const *);
 
 /* Functions for add to stack */
 void push (typed);
-int pop (void);
+int pop ();
 void display (void);
 void clear_stack (void);
 
@@ -79,6 +79,11 @@ void clear_stack (void);
 stack * putitem (int, int);
 stack * getitem (int);
 
+/* Functions to handle tuples */
+tuple * put_tuple_item (int, typed, tuple*);
+tuple * get_tuple_item (int, tuple*);
+tuple * csv_to_tuple (stack *);
+
 /* The functions with two parameters */
-double max (stack *);
-double min (stack *);
+double max (typed);
+double min (typed);

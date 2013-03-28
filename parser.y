@@ -19,13 +19,15 @@
 %union {
     typed val;
     char sym;
+    stack *stk;
     symrec *tptr;
 }
 
-%token <val> NUM STR /* Simple double precision number */
+%token <val> NUM STR TPL /* Simple double precision number */
 %token <sym> LP RP LS RS LB RB COMMA COLON PLUS MINUS TIMES OVER EQ TO STOP
 %token <tptr> VAR FNCT FNCP /* Variable and functions */
 %type <val> basic hashable tuple
+%type <stk> csv
 
 %right EQ
 %left PLUS MINUS
@@ -41,7 +43,7 @@ input       : /* empty */
             ;
 
 line        : STOP      
-            | basic STOP { put_output ($1); clear_stack(); }
+            | basic STOP { put_output ($1); }
             | error STOP { yyerrok; }
             ;
 
@@ -53,8 +55,16 @@ hashable    : NUM           { double num = $1.value.num; $$ = num_to_typed (num)
 basic       : hashable
             | VAR                { $$ = $1->value.var; }
             | VAR EQ basic       { $$ = $3; $1->value.var = $3; }
-            | FNCT tuple         { $$.value.num = (*($1->value.fnctptr))($2.value.num); $$.type = NUM; }
-            | FNCP tuple         { $$.value.num = (*($1->value.fncpptr))(s); $$.type = NUM; }
+            | FNCT tuple         {
+                                     if ($2.value.tup->next->pos == 0 && $2.value.tup->next->value.type == NUM) {
+                                        $$.value.num = (*($1->value.fnctptr))($2.value.tup->next->value.value.num);
+                                        $$.type = NUM;
+                                     } else {
+                                        strcpy ($$.value.str, "Something went wrong (not a number).");
+                                        $$.type = STR;
+                                     }
+                                 }
+            | FNCP tuple         { $$.value.num = (*($1->value.fncpptr))($2); $$.type = NUM; }
             | basic PLUS basic   { $$ = do_arith ($1, $3, PLUS); }
             | basic MINUS basic  { $$ = do_arith ($1, $3, MINUS); }
             | basic TIMES basic  { $$ = do_arith ($1, $3, TIMES); }
@@ -67,8 +77,8 @@ csv         : basic           { push ($1); }
             | csv COMMA basic { push ($3); }
             ;
 
-tuple       : LP RP         { $$.value.num = 0; }
-            | LP csv RP     { $$.value.num = 0; }
+tuple       : LP RP         { tuple *t = (tuple *) 0; $$.value.tup = t; $$.type = TPL; }
+            | LP csv RP     { tuple *t = csv_to_tuple (s); $$.value.tup = t; $$.type = TPL; }
             ;
 /* End of grammar */
 %%
@@ -85,14 +95,20 @@ void yyprint(FILE *file, int type, YYSTYPE value) {
         fprintf(file, " %g", value.val);
 }
 
+//
+// Parser functions
+//
+
 void put_output (typed val) {
-    int type = val.type;
-    switch (type) {
+    switch (val.type) {
         case NUM:
             printf (">>> %.10g\n", val.value.num);
             break;
         case STR:
             printf (">>> %s\n", val.value.str);
+            break;
+        case TPL:
+            break;
         default:
             break;
     }
@@ -153,7 +169,7 @@ struct init {
     char const *fname;
     union {
         double (*fnc1) (double);
-        double (*fnc2) (stack *);
+        double (*fnc2) (typed);
     } fnct;
 };
 
@@ -187,6 +203,10 @@ void init_table (void) {
     }
 }
 
+//
+// Functions for symbols on chain
+//
+
 symrec * putsym (char const *sym_name, int sym_type) {
     symrec *ptr = (symrec*) malloc (sizeof (symrec));
     ptr->name = (char*) malloc (strlen (sym_name) + 1);
@@ -208,7 +228,10 @@ symrec * getsym (char const *sym_name) {
     return 0;
 }
 
-/* Function to add an element to the stack */
+//
+// Functions to handle stacks
+//
+
 void push (typed val) {
     if (s->top == (MAXSIZE - 1)) {
         return; /* stack is full */
@@ -229,19 +252,15 @@ void push (typed val) {
     return;
 }
 
-/* Function to delete an element from the stack */
 int pop () {
-    //int type;
     if (s->top == -1) {
         return (s->top); /* stack is empty */
     } else {
-        //type = s->type;
         s = s->next;
     }
     return s->top;
 }
 
-/*Function to display the status of the stack*/
 void display () {
     int i, type;
     if (s->top == -1) {
@@ -259,7 +278,6 @@ void display () {
     printf ("\n");
 }
 
-/* Function to clear the stack */
 void clear_stack () {
     int i;
     for (i = s->top; i>=0; i--)
@@ -270,9 +288,8 @@ void clear_stack () {
 /* Function to put a stack item */
 stack * putitem (int top, int type) {
     stack *ptr = getitem (top);
-    if (ptr == 0) {
+    if (ptr == (stack *) 0)
         ptr = (stack*) malloc (sizeof (stack));
-    }
     ptr->top = top;
     ptr->value.type = type;
     ptr->next = s;
@@ -284,33 +301,79 @@ stack * putitem (int top, int type) {
 stack * getitem (int top) {
     stack *ptr;
     for (ptr = s; ptr != (stack *) 0; ptr = (stack *) ptr->next) {
-        if (ptr->top == top) {
+        if (ptr->top == top)
             return ptr;
-        }
     }
-    return 0;
+    return (stack *) 0;
 }
 
-double max (stack *p) {
-    int i;
-    //double max;
-    double max = p->value.value.num;
-    for (i=p->top; i>=1; i--) {
-        if (max < p->next->value.value.num )
-            max = p->next->value.value.num;
-        pop ();
+//
+// Functions to manipulate tuples
+//
+
+tuple * put_tuple_item (int pos, typed data, tuple *the_tuple) {
+    tuple *ptr = get_tuple_item (pos, the_tuple);
+    if (ptr == (tuple *) 0)
+        ptr = (tuple*) malloc (sizeof (tuple));
+    ptr->pos = pos;
+    ptr->value = data;
+    ptr->next = the_tuple;
+    the_tuple = ptr;
+    return ptr;
+}
+
+tuple * get_tuple_item (int pos, tuple *the_tuple) {
+    tuple *ptr;
+    for (ptr = the_tuple; ptr != (tuple *) 0; ptr = (tuple *) ptr->next) {
+        if (ptr->pos == pos)
+            return ptr;
+    }
+    return (tuple *) 0;
+}
+
+tuple * csv_to_tuple (stack *the_stack) {
+    tuple *t = (tuple*) 0;
+    if (the_stack->top == -1)
+        return NULL; /* the_stack is empty */
+    else {
+        stack *stk;
+        for (stk = the_stack; stk != (stack *) 0; stk = (stack *) stk->next) {
+            t = put_tuple_item (stk->top, stk->value, t);
+            if (t->next != (tuple *) 0)
+                t->next->prev = t;
+            if (t->pos == 0)
+                t->prev = (tuple *) 0;
+        }
+    }
+    return t;
+}
+
+//
+// Other functions
+//
+
+double max (typed p) {
+    tuple *tp;
+    p.value.tup = get_tuple_item (0, p.value.tup);
+    double max = p.value.tup->next->value.value.num;
+    for (tp = p.value.tup; tp != (tuple *) 0; tp = (tuple *) tp->next) {
+        if ( tp->next != (tuple *) 0 ) {
+            if (max < tp->next->value.value.num )
+                max = tp->next->value.value.num;
+        }
     }
     return max;
 }
 
-double min (stack *p) {
-    int i;
-    double min;
-    min = p->value.value.num;
-    for (i=p->top; i>=1; i--) {
-        if (min > p->next->value.value.num )
-            min = p->next->value.value.num;
-        pop ();
+double min (typed p) {
+    tuple *tp;
+    p.value.tup = get_tuple_item(0, p.value.tup);
+    double min = p.value.tup->value.value.num;
+    for (tp = p.value.tup; tp != (tuple *) 0; tp = (tuple *) tp->next) {
+        if ( tp->next != (tuple *) 0 ) {
+            if (min > tp->next->value.value.num )
+                min = tp->next->value.value.num;
+        }
     }
     return min;
 }
