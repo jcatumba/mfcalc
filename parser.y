@@ -7,10 +7,11 @@
     #include <ctype.h>
     #define YYDEBUG 1
     #define YYPRINT(file, type, value) yyprint(file, type, value)
-    int yylex(void);
-    void yyerror(char const*s);
-    void yyprint();
+    int yylex (void);
+    void yyerror (char const*s);
+    void yyprint ();
     void put_output (typed);
+    void print_tuple (tuple *);
     typed num_to_typed (double);
     typed str_to_typed (char[50]);
     typed do_arith (typed, typed, int);
@@ -43,7 +44,7 @@ input       : /* empty */
             ;
 
 line        : STOP      
-            | basic STOP { put_output ($1); }
+            | basic STOP { printf (">>> "); put_output ($1); printf ("\n"); clear_stack (); }
             | error STOP { yyerrok; }
             ;
 
@@ -56,8 +57,8 @@ basic       : hashable
             | VAR                { $$ = $1->value.var; }
             | VAR EQ basic       { $$ = $3; $1->value.var = $3; }
             | FNCT tuple         {
-                                     if ($2.value.tup->next->pos == 0 && $2.value.tup->next->value.type == NUM) {
-                                        $$.value.num = (*($1->value.fnctptr))($2.value.tup->next->value.value.num);
+                                     if ($2.value.tup->pos == 0 && $2.value.tup->value.type == NUM) {
+                                        $$.value.num = (*($1->value.fnctptr))($2.value.tup->value.value.num);
                                         $$.type = NUM;
                                      } else {
                                         strcpy ($$.value.str, "Something went wrong (not a number).");
@@ -84,15 +85,15 @@ tuple       : LP RP         { tuple *t = (tuple *) 0; $$.value.tup = t; $$.type 
 %%
 
 /* Called by yyparse on error. */
-void yyerror( char const *s ) {
-    fprintf( stderr, "mfcalc: %s\n", s );
+void yyerror ( char const *s ) {
+    fprintf ( stderr, "mfcalc: %s\n", s );
 }
 
 void yyprint(FILE *file, int type, YYSTYPE value) {
     if (type == VAR)
-        fprintf(file, " %s", value.tptr->name);
+        fprintf (file, " %s", value.tptr->name);
     else if (type == NUM)
-        fprintf(file, " %g", value.val);
+        fprintf (file, " %g", value.val);
 }
 
 //
@@ -102,17 +103,28 @@ void yyprint(FILE *file, int type, YYSTYPE value) {
 void put_output (typed val) {
     switch (val.type) {
         case NUM:
-            printf (">>> %.10g\n", val.value.num);
+            printf ("%.10g", val.value.num);
             break;
         case STR:
-            printf (">>> %s\n", val.value.str);
+            printf ("%s", val.value.str);
             break;
         case TPL:
+            print_tuple (val.value.tup);
             break;
         default:
             break;
     }
-    clear_stack ();
+}
+
+void print_tuple (tuple *the_tuple) {
+    tuple *ptr;
+    printf ("(");
+    for (ptr = the_tuple; ptr != (tuple *) 0; ptr = (tuple *) ptr->next) {
+        put_output (ptr->value);
+        if (ptr->next != (tuple *) 0)
+            printf (",");
+    }
+    printf (")");
 }
 
 typed do_arith (typed one, typed two, int operator) {
@@ -345,7 +357,7 @@ tuple * csv_to_tuple (stack *the_stack) {
                 t->prev = (tuple *) 0;
         }
     }
-    return t;
+    return t->next;
 }
 
 //
@@ -354,8 +366,7 @@ tuple * csv_to_tuple (stack *the_stack) {
 
 double max (typed p) {
     tuple *tp;
-    p.value.tup = get_tuple_item (0, p.value.tup);
-    double max = p.value.tup->next->value.value.num;
+    double max = p.value.tup->value.value.num;
     for (tp = p.value.tup; tp != (tuple *) 0; tp = (tuple *) tp->next) {
         if ( tp->next != (tuple *) 0 ) {
             if (max < tp->next->value.value.num )
@@ -367,7 +378,6 @@ double max (typed p) {
 
 double min (typed p) {
     tuple *tp;
-    p.value.tup = get_tuple_item(0, p.value.tup);
     double min = p.value.tup->value.value.num;
     for (tp = p.value.tup; tp != (tuple *) 0; tp = (tuple *) tp->next) {
         if ( tp->next != (tuple *) 0 ) {
