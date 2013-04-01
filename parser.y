@@ -45,7 +45,7 @@ input       : /* empty */
 
 line        : STOP      
             | basic STOP { printf (">>> "); put_output ($1); printf ("\n"); clear_stack (); }
-            | error STOP { yyerrok; }
+            | error STOP { yyerrok; clear_stack(); }
             ;
 
 hashable    : NUM           { double num = $1.value.num; $$ = num_to_typed (num); }
@@ -248,7 +248,9 @@ void push (typed val) {
     if (s->top == (MAXSIZE - 1)) {
         return; /* stack is full */
     } else {
-        switch (val.type) {
+        s = putitem (s->top+1, val.type);
+        s->value = val;
+        /*switch (val.type) {
             case STR:
                 s = putitem (s->top+1, STR);
                 strcpy(s->value.value.str, val.value.str);
@@ -259,7 +261,7 @@ void push (typed val) {
                 break;
             default:
                 break;
-        }
+        }*/
     }
     return;
 }
@@ -285,6 +287,10 @@ void display () {
                 printf ("%s\n", ptr->value.value.str);
             else if (type == NUM)
                 printf ("%.10g\n", ptr->value.value.num);
+            else if (type == TPL) {
+                print_tuple (ptr->value.value.tup);
+                printf("\n");
+            }
         }
     }
     printf ("\n");
