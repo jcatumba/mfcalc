@@ -75,7 +75,7 @@ basic       : hashable
             ;
 
 csv         : basic           { stack *the_stk; the_stk = (stack*) malloc (sizeof(stack)); the_stk->top = -1; push ($1, the_stk); $$ = the_stk; } 
-            | csv COMMA basic { push ($3, $1); $$ = $1; display($$); }
+            | csv COMMA basic { push ($3, $1); $$ = $1; }
             ;
 
 tuple       : LP RP         { tuple *t = (tuple *) 0; $$.value.tup = t; $$.type = TPL; }
