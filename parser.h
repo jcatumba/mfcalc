@@ -70,14 +70,14 @@ symrec *putsym (char const *, int);
 symrec *getsym (char const *);
 
 /* Functions for add to stack */
-void push (typed);
-int pop ();
-void display (void);
-void clear_stack (void);
+void push (typed, stack*);
+int pop (stack *);
+void display (stack*);
+void clear_stack (stack*);
 
 /* Functions to handle stack structs */
-stack * putitem (int, int);
-stack * getitem (int);
+stack * putitem (int, int, stack*);
+stack * getitem (int, stack*);
 
 /* Functions to handle tuples */
 tuple * put_tuple_item (int, typed, tuple*);

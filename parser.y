@@ -44,7 +44,7 @@ input       : /* empty */
             ;
 
 line        : STOP      
-            | basic STOP { printf (">>> "); put_output ($1); printf ("\n"); clear_stack (); }
+            | basic STOP { printf (">>> "); put_output ($1); printf ("\n"); /*clear_stack ();*/ }
             | error STOP { yyerrok; }
             ;
 
@@ -74,12 +74,12 @@ basic       : hashable
             | LP basic RP        { $$.value.num = $2.value.num; $$.type = NUM; }
             ;
 
-csv         : basic           { push ($1); }
-            | csv COMMA basic { push ($3); }
+csv         : basic           { stack *the_stk; the_stk = (stack*) malloc (sizeof(stack)); the_stk->top = -1; push ($1, the_stk); $$ = the_stk; } 
+            | csv COMMA basic { push ($3, $1); $$ = $1; display($$); }
             ;
 
 tuple       : LP RP         { tuple *t = (tuple *) 0; $$.value.tup = t; $$.type = TPL; }
-            | LP csv RP     { tuple *t = csv_to_tuple (s); $$.value.tup = t; $$.type = TPL; }
+            | LP csv RP     { tuple *t = csv_to_tuple ($2); $$.value.tup = t; $$.type = TPL; }
             ;
 /* End of grammar */
 %%
@@ -244,42 +244,48 @@ symrec * getsym (char const *sym_name) {
 // Functions to handle stacks
 //
 
-void push (typed val) {
-    if (s->top == (MAXSIZE - 1)) {
+void push (typed val, stack *stk) {
+    if (stk->top == (MAXSIZE - 1)) {
         return; /* stack is full */
     } else {
-        switch (val.type) {
+        stk = putitem (s->top+1, val.type, stk);
+        stk->value = val;
+        /*switch (val.type) {
             case STR:
-                s = putitem (s->top+1, STR);
-                strcpy(s->value.value.str, val.value.str);
+                stk = putitem (stk->top+1, STR, stk);
+                strcpy(stk->value.value.str, val.value.str);
                 break;
             case NUM:
-                s = putitem (s->top+1, NUM);
-                s->value.value.num = val.value.num;
+                stk = putitem (stk->top+1, NUM, stk);
+                stk->value.value.num = val.value.num;
+                break;
+            case TPL:
+                stk = putitem (stk->top+1, TPL, stk);
+                stk->value = val;
                 break;
             default:
                 break;
-        }
+        }*/
     }
     return;
 }
 
-int pop () {
-    if (s->top == -1) {
-        return (s->top); /* stack is empty */
+int pop (stack *stk) {
+    if (stk->top == -1) {
+        return (stk->top); /* stack is empty */
     } else {
-        s = s->next;
+        stk = stk->next;
     }
-    return s->top;
+    return stk->top;
 }
 
-void display () {
+void display (stack *stk) {
     int i, type;
-    if (s->top == -1) {
+    if (stk->top == -1) {
         return; /* stack is empty */
     } else {
-        for (i = s->top; i >= 0; i--) {
-            stack *ptr = getitem (i);
+        for (i = stk->top; i >= 0; i--) {
+            stack *ptr = getitem (i, stk);
             type = ptr->value.type;
             if (type == STR)
                 printf ("%s\n", ptr->value.value.str);
@@ -290,29 +296,29 @@ void display () {
     printf ("\n");
 }
 
-void clear_stack () {
+void clear_stack (stack *stk) {
     int i;
-    for (i = s->top; i>=0; i--)
-        pop ();
+    for (i = stk->top; i>=0; i--)
+        pop (stk);
     return;
 }
 
 /* Function to put a stack item */
-stack * putitem (int top, int type) {
-    stack *ptr = getitem (top);
+stack * putitem (int top, int type, stack *stk) {
+    stack *ptr = getitem (top, stk);
     if (ptr == (stack *) 0)
         ptr = (stack*) malloc (sizeof (stack));
     ptr->top = top;
     ptr->value.type = type;
-    ptr->next = s;
-    s = ptr;
+    ptr->next = stk;
+    stk = ptr;
     return ptr;
 }
 
 /* Function to get a stack item */
-stack * getitem (int top) {
+stack * getitem (int top, stack *stk) {
     stack *ptr;
-    for (ptr = s; ptr != (stack *) 0; ptr = (stack *) ptr->next) {
+    for (ptr = stk; ptr != (stack *) 0; ptr = (stack *) ptr->next) {
         if (ptr->top == top)
             return ptr;
     }
